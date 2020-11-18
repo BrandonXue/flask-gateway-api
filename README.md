@@ -4,7 +4,7 @@ Professor Kenytt Avery
 
 CPSC 449, Web Back-end Development
 
-Due: Nov. 6, 2020
+Due: Nov. 27, 2020
 
 ## Introduction
 An API featuring three microservices.
