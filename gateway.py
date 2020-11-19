@@ -16,7 +16,7 @@ import requests
 env_var = os.environ
 
 app = flask.Flask(__name__)
-app.config.from_envvar('APP_CONFIG')
+app.config.from_envvar('GATEWAY_APP_CONFIG')
 
 GATEWAY_AUTH_EXCLUDE = {
     "/api/v1/users/new",
@@ -25,6 +25,8 @@ GATEWAY_AUTH_EXCLUDE = {
     "/api/v1/timelines/error"
 }
 AUTHENTICATION_PATH = "/api/v1/users/login"
+USERS_PATH = "/api/v1/users"
+TIMELINES_PATH = "/api/v1/timelines"
 
 UPSTREAM_URL = app.config['UPSTREAM']
 
@@ -33,9 +35,6 @@ TIMELINES_START_PORT = app.config['TIMELINES_START_PORT']
 
 USERS_PROCESS_POOL = app.config['USERS_PROCESS_POOL']
 TIMELINES_PROCESS_POOL = app.config['TIMELINES_PROCESS_POOL']
-
-USERS_PATH = "/api/v1/users"
-TIMELINES_PATH = "/api/v1/timelines"
 
 users_port_RR = 0
 timelines_port_RR = 0

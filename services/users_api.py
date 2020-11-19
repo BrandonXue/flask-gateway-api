@@ -16,9 +16,9 @@ CRYPT_HASH_ALGORITHM = 'sha3_512'
 PASSWORD_SALT_LENGTH = 64
 
 app = flask_api.FlaskAPI(__name__)
-app.config.from_envvar('APP_CONFIG')
+app.config.from_envvar('USERS_APP_CONFIG')
 
-queries = pugsql.module('user_queries/')
+queries = pugsql.module('services/user_queries/')
 queries.connect(app.config['DATABASE_URL'])
 
 # Get a database Engine object

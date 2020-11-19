@@ -12,9 +12,9 @@ from flask_api import status, exceptions
 import pugsql
 
 app = flask_api.FlaskAPI(__name__)
-app.config.from_envvar('APP_CONFIG')
+app.config.from_envvar('TIMELINES_APP_CONFIG')
 
-queries = pugsql.module('timeline_queries/')
+queries = pugsql.module('services/timeline_queries/')
 queries.connect(app.config['DATABASE_URL'])
 
 # Get a database Engine object
