@@ -13,8 +13,6 @@ from flask_api import status
 from flask_basicauth import BasicAuth
 import requests
 
-env_var = os.environ
-
 app = flask.Flask(__name__)
 app.config.from_envvar('GATEWAY_APP_CONFIG')
 
@@ -29,12 +27,6 @@ USERS_PATH = "/api/v1/users"
 TIMELINES_PATH = "/api/v1/timelines"
 
 UPSTREAM_URL = app.config['UPSTREAM']
-
-USERS_START_PORT = app.config['USERS_START_PORT']
-TIMELINES_START_PORT = app.config['TIMELINES_START_PORT']
-
-USERS_PROCESS_POOL = app.config['USERS_PROCESS_POOL']
-TIMELINES_PROCESS_POOL = app.config['TIMELINES_PROCESS_POOL']
 
 users_port_RR = 0
 timelines_port_RR = 0
@@ -89,16 +81,16 @@ def init_users_pool():
     global users_pool
     users_pool = [
         port for port in range(
-            USERS_START_PORT,
-            USERS_START_PORT + USERS_PROCESS_POOL)
+            app.config['USERS_START_PORT'],
+            app.config['USERS_START_PORT'] + app.config['USERS_PROCESS_POOL'])
     ]
 
 def init_timelines_pool():
     global timelines_pool
     timelines_pool = [
         port for port in range(
-            TIMELINES_START_PORT,
-            TIMELINES_START_PORT + TIMELINES_PROCESS_POOL
+            app.config['TIMELINES_START_PORT'],
+            app.config['TIMELINES_START_PORT'] + app.config['TIMELINES_PROCESS_POOL']
         )
     ]
 
@@ -208,7 +200,7 @@ def route_page(err):
         }
         # If we're in development environment, include information on which
         # worker was removed, and what's left in the pools
-        if env_var['FLASK_ENV'] == 'development':
+        if os.environ['FLASK_ENV'] == 'development':
             global users_pool
             global timelines_pool
             response_dict['pools'] = {

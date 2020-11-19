@@ -43,7 +43,7 @@ def init_db():
 
 # Trigger a server error response
 @app.route('/api/v1/timelines/error')
-def trigger_error(error):
+def trigger_error():
 	if 'error' not in {*request.data}:
 		error = 404
 	else:
