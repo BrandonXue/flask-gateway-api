@@ -1,15 +1,17 @@
-#
-# Simple API gateway in Python
-#
+# CPSC 449-02 Web Back-end Engineering
+
+# Project 5, Polyglot Persistence (sqlite and dynamodb)
+
+# Group members
+# 		Brandon Xue (brandonx@csu.fullerton.edu)
+
 # Inspired by <https://github.com/vishnuvardhan-kumar/loadbalancer.py>
-#
-#   $ python3 -m pip install Flask python-dotenv
-#
+
 import os
 import sys
 
 import flask
-from flask_api import status
+from flask_api import status, exceptions
 from flask_basicauth import BasicAuth
 import requests
 
@@ -25,14 +27,17 @@ GATEWAY_AUTH_EXCLUDE = {
 AUTHENTICATION_PATH = "/api/v1/users/login"
 USERS_PATH = "/api/v1/users"
 TIMELINES_PATH = "/api/v1/timelines"
+DIRECT_MESSAGES_PATH = '/api/v1/dms'
 
 UPSTREAM_URL = app.config['UPSTREAM']
 
 users_port_RR = 0
 timelines_port_RR = 0
+direct_messages_port_RR = 0
 
 users_pool = None
 timelines_pool = None
+direct_messages_pool = None
 
 class GatewayBasicAuth(BasicAuth):
     # auth_exclude should be a set of paths that are public
@@ -94,6 +99,15 @@ def init_timelines_pool():
         )
     ]
 
+def init_direct_messages_pool():
+    global direct_messages_pool
+    direct_messages_pool = [
+        port for port in range(
+            app.config['DIRECT_MESSAGES_START_PORT'],
+            app.config['DIRECT_MESSAGES_START_PORT'] + app.config['DIRECT_MESSAGES_PROCESS_POOL']
+        )
+    ]
+
 # Return a port for the users microservice using round-robin strategy.
 # Initializes the pool if not already available. Returns None if pool empty.
 def get_users_port():
@@ -118,12 +132,24 @@ def get_timelines_port():
     timelines_port_RR = (timelines_port_RR + 1) % len(timelines_pool)
     return str(timelines_pool[timelines_port_RR])
 
+# Return a port for the direct messages microservice using round-robin strategy.
+# Initializes the pool if not already available. Returns None if pool empty.
+def get_direct_messages_port():
+    global direct_messages_pool
+    if direct_messages_pool == None:
+        init_direct_messages_pool()
+    if len(direct_messages_pool) == 0:
+        return None
+    global direct_messages_port_RR
+    direct_messages_port_RR = (direct_messages_port_RR + 1) % len(direct_messages_pool)
+    return str(direct_messages_pool[direct_messages_port_RR])
+
 def handle_empty_process_pool(service_type):
     return flask.json.jsonify({
         'message': service_type + " service unavailable.",
         'method': flask.request.method,
         'url': flask.request.url,
-    }), 503
+    }), exceptions.status.HTTP_503_SERVICE_UNAVAILABLE
 
 def remove_worker(service_type, port):
     if type(port) is str:
@@ -134,6 +160,9 @@ def remove_worker(service_type, port):
     elif service_type == 'timelines':
         global timelines_pool
         timelines_pool.remove(port)
+    elif service_type == 'direct_messages':
+        global direct_messages_pool
+        direct_messages_pool.remove(port)
 
 @app.errorhandler(404)
 @gateway_bauth.required
@@ -153,11 +182,18 @@ def route_page(err):
             return handle_empty_process_pool('timelines')
         else:
             upstream = UPSTREAM_URL + ':' + port
+    elif DIRECT_MESSAGES_PATH in flask.request.full_path:
+        service_type = 'direct_messages'
+        port = get_direct_messages_port()
+        if port == None:
+            return handle_empty_process_pool('direct_messages')
+        else:
+            upstream = UPSTREAM_URL + ':' + port
     else:
         return flask.json.jsonify({
             'method': flask.request.method,
             'url': flask.request.url
-        }), 404
+        }), exceptions.status.HTTP_404_NOT_FOUND
 
     # In the API contract, authentication still uses json data
     # If our current URL is the authentication URL, we need to grab auth data
@@ -182,7 +218,7 @@ def route_page(err):
             'method': e.request.method,
             'url': e.request.url,
             'exception': type(e).__name__,
-        }), 503
+        }), exceptions.status.HTTP_500_INTERNAL_SERVER_ERROR
 
     headers = remove_item(
         response.headers,
@@ -205,7 +241,8 @@ def route_page(err):
             global timelines_pool
             response_dict['pools'] = {
                 'users': users_pool,
-                'timelines': timelines_pool
+                'timelines': timelines_pool,
+                'direct_messages': direct_messages_pool
             }
             response_dict['removed'] = service_type + " " + port
         return flask.json.jsonify(response_dict), response.status_code
