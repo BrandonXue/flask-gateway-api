@@ -44,7 +44,8 @@ Python modules:
 - werkzeug.security
 
 #### Usage
-1. Start up dynamodb local by navigating to the directory it is located in, and running `java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb`.
+1. Start up dynamodb local by navigating to the directory it is located in, and running:
+  - `java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb`
   - This can be done in one step with `zsh ./dynamo.sh` although you may need to modify the script depending on your platform.
   
 2. Navigate to the project repository with another terminal emulator window.
@@ -55,7 +56,8 @@ Python modules:
   - All databases will be automatically populated with test data.
   - This can be done in one step with `zsh ./init.sh`, although you may need to modify the script depending on your platform.
   
-4. Using foreman, run `foreman start --formation gateway=1,users=3,timelines=3,directmessages=3 -p 5000`.
+4. Using foreman, run:
+  - `foreman start --formation gateway=1,users=3,timelines=3,directmessages=3 -p 5000`
   - This will start three instances of each microservice. The port must be configured to 5000 for development, because of the way config is set.
   - This can be done in one step with `zsh ./start.sh` although you may need to modify the script depending on your platform.
 
