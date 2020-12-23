@@ -8,7 +8,7 @@ A Flask gateway API featuring three microservices: users, timelines, and direct 
 - A basic gateway API that connects to three microservices and distributes load to them in a round-robin fashion.
 - Each service has a variety of operations with RESTful design (hopefully).
 - Removal of services from the pool if any of them encounter an internal server error.
-- Basic auth required before accedding all endpoints aside from creating an account and authentication.
+- Basic auth required before accessing all endpoints aside from creating an account and authentication.
 
 #### Examples
 The following examples are for the DMs service (uses DynamoDB):
