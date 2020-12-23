@@ -1,21 +1,20 @@
 # CPSC 449-02 Web Back-end Engineering
 
-# Project 2, RESTful Microservices
+# Project 5, Polyglot Persistence (sqlite and dynamodb)
 
 # Group members
-# 		Jacob Rapmund (jacobwrap86@csu.fullerton.edu)
 # 		Brandon Xue (brandonx@csu.fullerton.edu)
 
-import flask_api
-from flask import request, g
-from flask_api import status, exceptions
 import pugsql
+import request_utils
+from flask import request, g
+from flask_api import status, exceptions, FlaskAPI
 import werkzeug.security as wk_s
 
 CRYPT_HASH_ALGORITHM = 'sha3_512'
 PASSWORD_SALT_LENGTH = 64
 
-app = flask_api.FlaskAPI(__name__)
+app = FlaskAPI(__name__)
 app.config.from_envvar('USERS_APP_CONFIG')
 
 queries = pugsql.module('services/user_queries/')
@@ -42,20 +41,26 @@ def init_db():
 	with app.app_context():
 		db = get_db()
 		with app.open_resource('MBS.sql', mode='r') as f:
+			print('Creating new users, follows, and tweets tables...')
 			db.cursor().executescript(f.read())
 		db.commit()
+		try:
+			sqlite_prefix = 'sqlite:///'
+			i = app.config['DATABASE_URL'].index(sqlite_prefix) + len(sqlite_prefix)
+			print('Users, follows, and tweets table created in file:', app.config['DATABASE_URL'][i:])
+		except:
+			pass
 
 # Trigger a server error response
 @app.route('/api/v1/users/error')
 def trigger_error():
 	if 'error' not in {*request.data}:
-		error = 404
+		error = status.HTTP_400_BAD_REQUEST
 	else:
 		error = request.data['error']
-	
 	return {
 		"error": "This endpoint is used for development purposes."
-		}, error
+	}, error
 
 # Placeholder for root, show all users' usernames in the database
 @app.route('/api/v1/users', methods=['GET'])
@@ -65,15 +70,8 @@ def home():
 
 # Create a new user
 @app.route('/api/v1/users/new', methods=['POST'])
+@request_utils.require_fields({'username', 'email', 'password'})
 def createUser():
-	posted_fields = {*request.data}
-	required_fields = {'username', 'email', 'password'}
-	
-	# Check that all required fields are provided. Extras are ignored
-	if not required_fields <= posted_fields:
-		message = f'Missing fields: {required_fields - posted_fields}'
-		raise exceptions.ParseError(message)
-
 	username = request.data['username']
 	email = request.data['email']
 	password = request.data['password']
@@ -96,21 +94,14 @@ def createUser():
 
 # Authenticate a user
 @app.route('/api/v1/users/login', methods=['POST'])
+@request_utils.require_fields({'username', 'password'})
 def authenticateUser():
-	posted_fields = {*request.data}
-	required_fields = {'username', 'password'}
-	
-	# Check if all reqiured fields are provided. Extras are ignored
-	if not required_fields <= posted_fields:
-		message = f'Missing fields: {required_fields - posted_fields}'
-		raise exceptions.ParseError(message)
-
 	username = request.data['username']
 	password = request.data['password']
 
 	pw_hash = queries.find_hash(user_name=username)
 
-	if wk_s.check_password_hash(pw_hash, password):
+	if pw_hash != None and wk_s.check_password_hash(pw_hash, password):
 		return {
 			'message': 'Authentication successful.'
 		}, status.HTTP_200_OK, {
@@ -127,43 +118,37 @@ def followers(username):
 	if not queries.user_exists(user_name=username):
 		raise exceptions.NotFound("Current user not found.")
 
-	posted_fields = {*request.data}
-	required_fields = {'follow'}
-	
-	# Check if all reqiured fields are provided. Extras are ignored
-	if not required_fields <= posted_fields:
-		message = f'Missing fields: {required_fields - posted_fields}'
-		raise exceptions.ParseError(message)
-
-	user_followed = request.data['follow']
-
 	if request.method == 'POST':
-		return addFollower(username, user_followed)
+		return addFollower(username)
 	elif request.method == 'DELETE':
-		return removeFollower(username, user_followed)
+		return removeFollower(username)
 
 # Add a follow relationship if both users exist and the relationship doesn't exist
-def addFollower(username, usernameToFollow):
+@request_utils.require_fields({'follow'})
+def addFollower(username):
+	username_to_follow = request.data['follow']
 	with queries.transaction():
 		if not queries.user_exists(user_name=username):
-			raise exceptions.NotFound("The current user no longer exists.")
-		if not queries.user_exists(user_name=usernameToFollow):
-			raise exceptions.NotFound("The user you are trying to follow no longer exists.")
+			raise exceptions.NotFound("The current user does not exist.")
+		if not queries.user_exists(user_name=username_to_follow):
+			raise exceptions.NotFound("The user you are trying to follow does not exist.")
 		try:
-			queries.add_follower(user_name=username, followed_name=usernameToFollow)
+			queries.add_follower(user_name=username, followed_name=username_to_follow)
 		except Exception as e:
 			return {'message': 'You are already following this user.'}, status.HTTP_409_CONFLICT
 		
 	return request.data, status.HTTP_201_CREATED
 
 # Remove a follow relationship if both users exist and the relationship exists
-def removeFollower(username, usernameToRemove):
+@request_utils.require_fields({'follow'})
+def removeFollower(username):
+	username_to_remove = request.data['follow']
 	with queries.transaction():
 		if not queries.user_exists(user_name=username):
-			raise exceptions.NotFound("The current user no longer exists.")
-		if not queries.user_exists(user_name=usernameToRemove):
-			raise exceptions.NotFound("The user you are trying to unfollow no longer exists.")
-		if queries.remove_follower(user_name=username, followed_name=usernameToRemove):
+			raise exceptions.NotFound("The current user does not exist.")
+		if not queries.user_exists(user_name=username_to_remove):
+			raise exceptions.NotFound("The user you are trying to unfollow does not exist.")
+		if queries.remove_follower(user_name=username, followed_name=username_to_remove):
 			return request.data, status.HTTP_200_OK
 		else:
-			raise exceptions.NotFound("Could not unfollow: the follower relationship does not exist.")
+			raise exceptions.NotFound("Could not unfollow: relationship does not exist.")

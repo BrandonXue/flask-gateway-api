@@ -1,17 +1,16 @@
 # CPSC 449-02 Web Back-end Engineering
 
-# Project 2, RESTful Microservices
+# Project 5, Polyglot Persistence (sqlite and dynamodb)
 
 # Group members
-# 		Jacob Rapmund (jacobwrap86@csu.fullerton.edu)
 # 		Brandon Xue (brandonx@csu.fullerton.edu)
 
-import flask_api
-from flask import request, g
-from flask_api import status, exceptions
 import pugsql
+import request_utils
+from flask import request, g
+from flask_api import status, exceptions, FlaskAPI
 
-app = flask_api.FlaskAPI(__name__)
+app = FlaskAPI(__name__)
 app.config.from_envvar('TIMELINES_APP_CONFIG')
 
 queries = pugsql.module('services/timeline_queries/')
@@ -38,20 +37,26 @@ def init_db():
 	with app.app_context():
 		db = get_db()
 		with app.open_resource('MBS.sql', mode='r') as f:
+			print('Creating new users, follows, and tweets tables...')
 			db.cursor().executescript(f.read())
 		db.commit()
+		try:
+			sqlite_prefix = 'sqlite:///'
+			i = app.config['DATABASE_URL'].index(sqlite_prefix) + len(sqlite_prefix)
+			print('Users, follows, and tweets table created in file:', app.config['DATABASE_URL'][i:])
+		except:
+			pass
 
 # Trigger a server error response
 @app.route('/api/v1/timelines/error')
 def trigger_error():
 	if 'error' not in {*request.data}:
-		error = 404
+		error = status.HTTP_400_BAD_REQUEST
 	else:
 		error = request.data['error']
-		
 	return {
 		"error": "This endpoint is used for development purposes."
-		}, error
+	}, error
 
 # Placeholder for root, return text saying "Home Page"
 @app.route('/api/v1/timelines', methods=['GET'])
@@ -68,10 +73,15 @@ def getPublicTimeline():
 # up to 25 tweets by people this user is following, and making posts.
 @app.route('/api/v1/timelines/<string:username>/home', methods=['GET', 'POST'])
 def homeTimeline(username):
+	try:
+		auth_id = queries.authid_by_name(username=username)['id']
+	except Exception as e:
+		return {'error':str('Could not find user timeline.')}, status.HTTP_404_NOT_FOUND
+	
 	if request.method == 'GET':
-		return getHomeTimeline(username)
+		return getHomeTimeline(auth_id)
 	elif request.method == 'POST':
-		return postTweet(username, request.data)
+		return postTweet(username, auth_id)
 	
 # Get up to 25 tweets posted by a particular user.
 @app.route('/api/v1/timelines/<string:username>', methods=['GET'])
@@ -87,32 +97,25 @@ def getUserTimeline(username):
 
 # Get a user's home timeline. This consists of up to 25 of the most recent
 # posts made by users this user is following.
-def getHomeTimeline(username):
-	username = username.replace(" ", "")
+def getHomeTimeline(auth_id):
 	try:
-		author_id = queries.authid_by_name(username=username)['id']
-		home_timeline = queries.home_timeline(author_id=author_id)
+		home_timeline = queries.home_timeline(author_id=auth_id)
 		return list(home_timeline)
 	except Exception as e:
-		return {'error':str('Could not verify user.')}, status.HTTP_401_UNAUTHORIZED
+		return {'error':str('Could not find home timeline.')}, status.HTTP_404_NOT_FOUND
 
 # Have a user post a tweet. This can show up on their timeline, as well as timelines
 # of people who follow this user.
-def postTweet(username, text):
-	username = username.replace(" ", "")
-	
-	if not username or not text:
-		message = f'Error: Missing fields'
-		raise exceptions.ParseError(message)
-		
+@request_utils.require_fields({'content_text'})
+def postTweet(username, auth_id):
+
 	try:
-		tweet = {'author_id':queries.authid_by_name(username=username)['id'],'content_text':text['content_text']}
-	except Exception as e:
-		return {'error':str('Could not verify user.')}, status.HTTP_401_UNAUTHORIZED
-		
-	try:
-		queries.create_tweet(**tweet)
-		tweet['id'] = queries.recent_tweet_id(author_id=tweet['author_id'])["id"]
+		inserted = queries.create_tweet(author_id=auth_id, content_text=request.data['content_text'])
+		tweet = {
+			'author_id': auth_id,
+			'content_text': request.data['content_text'],
+			'id': queries.recent_tweet_id(author_id=auth_id)["id"]
+		}
 	except Exception as e:
 		return {'error':str(e)}, status.HTTP_500_INTERNAL_SERVER_ERROR
 		
