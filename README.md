@@ -39,6 +39,7 @@ Python modules:
 - flask
 - flask_api
 - flask_basic_auth
+- flask_caching
 - pugsql
 - requests
 - werkzeug.security
@@ -46,7 +47,7 @@ Python modules:
 #### Usage
 1. Start up dynamodb local by navigating to the directory it is located in, and running:
     - `java -Djava.library.path=./DynamoDBLocal_lib -jar DynamoDBLocal.jar -sharedDb`
-    - This can be done in one step with `zsh ./dynamo.sh` although you may need to modify the script depending on your platform.
+    - This can be done in one step with `zsh ./scripts/dynamo.sh` although you may need to modify the script depending on your platform.
   
 2. Navigate to the project repository with another terminal emulator window.
 
@@ -54,12 +55,12 @@ Python modules:
     - The users and timelines test databases can be initialized through the `init` custom flask command of the users_api or the timelines_api flask apps.
     - The DMs database can be initalized through the `init` custom flask command of the direct_messsages_api flask app.
     - All databases will be automatically populated with test data.
-    - This can be done in one step with `zsh ./init.sh`, although you may need to modify the script depending on your platform.
+    - This can be done in one step with `zsh ./scripts/init.sh`, although you may need to modify the script depending on your platform.
   
 4. Using foreman, run:
     - `foreman start --formation gateway=1,users=3,timelines=3,directmessages=3 -p 5000`
     - This will start three instances of each microservice. The port must be configured to 5000 for development, because of the way config is set.
-    - This can be done in one step with `zsh ./start.sh` although you may need to modify the script depending on your platform.
+    - This can be done in one step with `zsh ./scripts/start.sh` although you may need to modify the script depending on your platform.
 
 5. Begin making HTTP Requests to the API.
 

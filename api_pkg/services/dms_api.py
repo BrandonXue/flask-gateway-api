@@ -1,18 +1,18 @@
-# CPSC 449-02 Web Back-end Engineering
+# Standard Imports
+from datetime import datetime
 
-# Project 5, Polyglot Persistence (sqlite and dynamodb)
-
-# Group members
-# 		Brandon Xue (brandonx@csu.fullerton.edu)
-
+# Third-Party Imports
 import boto3
-import dm_schema
-import request_utils
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from datetime import datetime
 from flask import request
 from flask_api import FlaskAPI, exceptions, status
+
+# Local Imports
+from api_pkg.services import dms_schema
+# import request_utils
+from api_pkg.api_utils import request_utils
+
 
 app = FlaskAPI(__name__)
 app.config.from_envvar('DIRECT_MESSAGES_APP_CONFIG')
@@ -21,11 +21,6 @@ DM_TABLE_NAME = 'dms'
 boto_client = boto3.client('dynamodb', endpoint_url=app.config['DYNAMODB_URL'])
 dynamodb = boto3.resource('dynamodb', endpoint_url=app.config['DYNAMODB_URL'])
 dm_table = dynamodb.Table(DM_TABLE_NAME)
-
-# Placeholder for root, return text saying "Home Page"
-# @app.route('/api/v1/dms', methods=['GET'])
-# def home():
-# 	return {'message': 'test'}, 200
 
 @app.cli.command('init')
 def init_db():
@@ -50,7 +45,7 @@ def init_db():
 	# msg = message
 	# qro = quick-reply-options
 	# mId = messageId
-	table = dynamodb.create_table(**(dm_schema.dm_table_schema)) # in dm_schema.py
+	table = dynamodb.create_table(**(dms_schema.dm_table_schema)) # in dms_schema.py
 	# Wait until the table exists.
 	table.meta.client.get_waiter('table_exists').wait(TableName=DM_TABLE_NAME)
 	print("New direct messages table created with name:", table.name)

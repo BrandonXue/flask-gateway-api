@@ -1,13 +1,10 @@
-# CPSC 449-02 Web Back-end Engineering
+# Standard Imports
+import functools
 
-# Project 5, Polyglot Persistence (sqlite and dynamodb)
-
-# Group members
-# 		Brandon Xue (brandonx@csu.fullerton.edu)
-
+# Third-Party Imports
 import flask
 import flask_api
-import functools
+
 
 # Just a quick decorator to simplify the specification of required fields
 class require_fields(object):

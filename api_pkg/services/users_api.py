@@ -1,15 +1,11 @@
-# CPSC 449-02 Web Back-end Engineering
-
-# Project 5, Polyglot Persistence (sqlite and dynamodb)
-
-# Group members
-# 		Brandon Xue (brandonx@csu.fullerton.edu)
-
+# Third-Party Imports
 import pugsql
-import request_utils
 from flask import request, g
 from flask_api import status, exceptions, FlaskAPI
 import werkzeug.security as wk_s
+
+# Local Imports
+from api_pkg.api_utils import request_utils 
 
 CRYPT_HASH_ALGORITHM = 'sha3_512'
 PASSWORD_SALT_LENGTH = 64
@@ -17,7 +13,7 @@ PASSWORD_SALT_LENGTH = 64
 app = FlaskAPI(__name__)
 app.config.from_envvar('USERS_APP_CONFIG')
 
-queries = pugsql.module('services/user_queries/')
+queries = pugsql.module('api_pkg/services/user_queries/')
 queries.connect(app.config['DATABASE_URL'])
 
 # Get a database Engine object
@@ -137,7 +133,9 @@ def addFollower(username):
 		except Exception as e:
 			return {'message': 'You are already following this user.'}, status.HTTP_409_CONFLICT
 		
-	return request.data, status.HTTP_201_CREATED
+	return {
+		"followed": request.data['follow']
+	}, status.HTTP_201_CREATED
 
 # Remove a follow relationship if both users exist and the relationship exists
 @request_utils.require_fields({'follow'})
@@ -149,6 +147,8 @@ def removeFollower(username):
 		if not queries.user_exists(user_name=username_to_remove):
 			raise exceptions.NotFound("The user you are trying to unfollow does not exist.")
 		if queries.remove_follower(user_name=username, followed_name=username_to_remove):
-			return request.data, status.HTTP_200_OK
+			return {
+				"unfollowed": request.data['follow']
+			}, status.HTTP_200_OK
 		else:
 			raise exceptions.NotFound("Could not unfollow: relationship does not exist.")

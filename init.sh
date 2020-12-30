@@ -1,2 +1,0 @@
-FLASK_APP=services/users_api flask init
-FLASK_APP=services/direct_messages_api flask init

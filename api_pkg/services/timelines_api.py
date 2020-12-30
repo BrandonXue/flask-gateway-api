@@ -1,19 +1,15 @@
-# CPSC 449-02 Web Back-end Engineering
-
-# Project 5, Polyglot Persistence (sqlite and dynamodb)
-
-# Group members
-# 		Brandon Xue (brandonx@csu.fullerton.edu)
-
+# Third-Party Imports
 import pugsql
-import request_utils
 from flask import request, g
-from flask_api import status, exceptions, FlaskAPI
+from flask_api import status, FlaskAPI
+
+# Local Imports
+from api_pkg.api_utils import request_utils
 
 app = FlaskAPI(__name__)
 app.config.from_envvar('TIMELINES_APP_CONFIG')
 
-queries = pugsql.module('services/timeline_queries/')
+queries = pugsql.module('api_pkg/services/timeline_queries/')
 queries.connect(app.config['DATABASE_URL'])
 
 # Get a database Engine object
