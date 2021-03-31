@@ -27,22 +27,14 @@ The following examples are for the DMs service (uses DynamoDB):
 
 #### Requirements
 Tools:
-- python 3
+- python3
 - foreman
-- httpie
+- httpie (optional)
 - dynamodb local
 - AWS cli
 
 Python modules:
-- boto3
-- botocore
-- flask
-- flask_api
-- flask_basic_auth
-- flask_caching
-- pugsql
-- requests
-- werkzeug.security
+- See requirements.txt
 
 #### Usage
 1. Start up dynamodb local by navigating to the directory it is located in, and running:
